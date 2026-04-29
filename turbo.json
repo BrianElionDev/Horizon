@@ -7,8 +7,18 @@
     },
     "build": {
       "dependsOn": ["^build"],
+      "env": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "JWT_SECRET",
+        "JWT_ACCESS_EXPIRY",
+        "FRONTEND_URL",
+        "PORT",
+        "NODE_ENV"
+      ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
+
     "lint": {
       "dependsOn": ["^build"]
     },

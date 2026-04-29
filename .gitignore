@@ -56,4 +56,6 @@ bower_components/
 
 # Project Docs (Internal)
 Horizon_*.md
+.claude/
+
 
