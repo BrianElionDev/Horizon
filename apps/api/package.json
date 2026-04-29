@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit",
     "db:seed": "tsx database/seed.ts"
@@ -28,6 +28,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.15.3",
+    "tsup": "^8.5.1",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   }
