@@ -76,7 +76,7 @@ pnpm db:seed
 ```
 
 ## Deployment
-.
+
 Both apps deploy to Vercel. Set `FRONTEND_URL` in the API project's env vars as a comma-separated list of all allowed frontend origins:
 
 ```
