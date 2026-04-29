@@ -72,4 +72,14 @@ export function buildApp() {
   return fastify
 }
 
-export default buildApp()
+import type { IncomingMessage, ServerResponse } from 'http'
+
+let _app: ReturnType<typeof buildApp> | undefined
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  if (!_app) {
+    _app = buildApp()
+    await _app.ready()
+  }
+  _app.server.emit('request', req, res)
+}
