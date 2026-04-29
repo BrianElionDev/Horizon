@@ -71,3 +71,5 @@ export function buildApp() {
 
   return fastify
 }
+
+export default buildApp()
