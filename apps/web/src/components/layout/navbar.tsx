@@ -40,7 +40,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 h-[var(--navbar-height)] border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/0.95)] backdrop-blur-sm">
+    <header className="fixed top-0 left-0 right-0 z-40 h-(--navbar-height) border-b border-[hsl(var(--border))] bg-[hsl(var(--background)/0.95)] backdrop-blur-sm">
       <div className="flex h-full items-center justify-between px-4">
         {/* Left */}
         <div className="flex items-center gap-3">

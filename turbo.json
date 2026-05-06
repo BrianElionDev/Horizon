@@ -14,7 +14,10 @@
         "JWT_ACCESS_EXPIRY",
         "FRONTEND_URL",
         "PORT",
-        "NODE_ENV"
+        "NODE_ENV",
+        "FORGE_API_BASE",
+        "FORGE_API_KEY",
+        "FORGE_MODEL"
       ],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },

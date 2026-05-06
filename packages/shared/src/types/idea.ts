@@ -9,4 +9,31 @@ export interface Idea {
   userId: string
   createdAt: string
   updatedAt: string
+  lastAnalysis: string | null
+  lastAnalysedAt: string | null
+  rawNotes: string | null
+}
+
+export interface ContextAreaSummary {
+  areaKey: string
+  completeness: number
+  updatedAt: string | null
+}
+
+export interface ContextAreaSection {
+  id: string
+  title: string
+  content: string
+  aiGenerated: boolean
+  status: 'pending' | 'accepted' | 'rejected'
+  updatedAt: string
+}
+
+export interface ContextAreaContent {
+  areaKey: string
+  rawContent: string
+  sections: ContextAreaSection[]
+  completeness: number
+  structuredAt: string | null
+  updatedAt: string | null
 }

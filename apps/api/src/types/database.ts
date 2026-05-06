@@ -59,6 +59,7 @@ export type Database = {
           status?: IdeaStatus
           origin?: string | null
           user_id: string
+          raw_notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -69,6 +70,7 @@ export type Database = {
           status?: IdeaStatus
           origin?: string | null
           user_id?: string
+          raw_notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -77,6 +79,34 @@ export type Database = {
             foreignKeyName: "ideas_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      context_area_content: {
+        Row: ContextAreaContentRow
+        Insert: {
+          id?: string
+          idea_id: string
+          area_key: string
+          raw_content?: string
+          sections?: unknown[]
+          structured_at?: string | null
+          completeness?: number
+          updated_at?: string
+        }
+        Update: {
+          raw_content?: string
+          sections?: unknown[]
+          structured_at?: string | null
+          completeness?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_area_content_idea_id_fkey"
+            columns: ["idea_id"]
+            referencedRelation: "ideas"
             referencedColumns: ["id"]
           }
         ]
@@ -120,6 +150,20 @@ export interface IdeaRow {
   status: IdeaStatus
   origin: string | null
   user_id: string
+  last_analysis: string | null
+  last_analysed_at: string | null
+  raw_notes: string | null
   created_at: string
+  updated_at: string
+}
+
+export interface ContextAreaContentRow {
+  id: string
+  idea_id: string
+  area_key: string
+  raw_content: string
+  sections: unknown[]
+  structured_at: string | null
+  completeness: number
   updated_at: string
 }

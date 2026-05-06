@@ -40,8 +40,8 @@ const SheetContent = React.forwardRef<
       className={cn(
         'fixed z-50 flex flex-col bg-[hsl(var(--card))] shadow-xl transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300',
         side === 'left'
-          ? 'inset-y-0 left-0 h-full w-[var(--sidebar-width)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left'
-          : 'inset-y-0 right-0 h-full w-[var(--sidebar-width)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
+          ? 'inset-y-0 left-0 h-full w-(--sidebar-width) data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left'
+          : 'inset-y-0 right-0 h-full w-(--sidebar-width) data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
         className
       )}
       {...props}
