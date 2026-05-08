@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import type { Idea, ContextAreaSummary, ContextAreaContent, ContextAreaSection } from '@horizon/shared'
+import type { Idea, ContextAreaSummary, ContextAreaContent, ContextAreaSection, ContextAreaGap } from '@horizon/shared'
 
 export function useIdeas() {
   return useQuery({
@@ -68,6 +68,7 @@ export function useStructureArea(ideaId: string) {
       ),
     onSuccess: (_, areaKey) => {
       qc.invalidateQueries({ queryKey: ['ideas', ideaId, 'context', areaKey] })
+      qc.invalidateQueries({ queryKey: ['ideas', ideaId, 'context'] })
     },
   })
 }
@@ -107,6 +108,25 @@ export function useStructureAll() {
     onSuccess: (_, { ideaId }) => {
       qc.invalidateQueries({ queryKey: ['ideas', ideaId, 'context'] })
     },
+  })
+}
+
+export function useIdentifyGaps(ideaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (areaKey: string) =>
+      apiClient.post<{ gaps: ContextAreaGap[] }>(`/api/v1/ideas/${ideaId}/context/${areaKey}/identify-gaps`, {}),
+    onSuccess: (_, areaKey) => {
+      qc.invalidateQueries({ queryKey: ['ideas', ideaId, 'context', areaKey] })
+    },
+  })
+}
+
+export function useContextAreaFull(ideaId: string) {
+  return useQuery({
+    queryKey: ['ideas', ideaId, 'context', 'full'],
+    queryFn: () => apiClient.get<ContextAreaContent[]>(`/api/v1/ideas/${ideaId}/context/full`),
+    enabled: !!ideaId,
   })
 }
 

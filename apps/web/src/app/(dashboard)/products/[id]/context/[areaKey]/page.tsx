@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { AREA_COLORS } from '@/components/context/context-area-card'
 import {
   useIdea, useContextArea, useContextAreaSummaries,
-  useSaveContextArea, useStructureArea, useReviewSection,
+  useSaveContextArea, useStructureArea, useReviewSection, useIdentifyGaps,
 } from '@/lib/hooks/use-ideas'
 import { areaKeyToUrl, urlToAreaKey } from '@/lib/product-types'
 import { formatRelativeDate } from '@/lib/mock-data'
@@ -42,6 +42,7 @@ export default function ContextAreaPage() {
   const saveArea = useSaveContextArea(id)
   const structureArea = useStructureArea(id)
   const reviewSection = useReviewSection(id)
+  const identifyGapsMutation = useIdentifyGaps(id)
 
   const areaMeta = CONTEXT_AREAS.find((a) => a.key === normalizedKey)
 
@@ -389,15 +390,83 @@ export default function ContextAreaPage() {
 
           {/* ── Gaps tab ── */}
           <TabsContent value="gaps">
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-[hsl(var(--muted))] flex items-center justify-center mb-4">
-                <Check className="h-6 w-6 text-[hsl(var(--muted-foreground))]" />
+            {(!areaContent?.sections?.length && !areaContent?.gaps?.length) ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-[hsl(var(--muted))] flex items-center justify-center mb-4">
+                  <Sparkles className="h-6 w-6 text-[hsl(var(--muted-foreground))]" />
+                </div>
+                <p className="text-sm font-semibold mb-1">No gaps detected yet</p>
+                <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-xs">
+                  Structure content first, then gaps will be automatically identified.
+                </p>
               </div>
-              <p className="text-sm font-semibold mb-1">No gaps identified yet</p>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-xs">
-                Gap identification arrives in a future phase once AI structuring is complete.
-              </p>
-            </div>
+            ) : areaContent && areaContent.gaps.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1">
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {areaContent.gaps.length} gap{areaContent.gaps.length > 1 ? 's' : ''} identified
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs h-7"
+                    disabled={identifyGapsMutation.isPending}
+                    onClick={() => identifyGapsMutation.mutate(normalizedKey)}
+                  >
+                    {identifyGapsMutation.isPending
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <RefreshCw className="h-3 w-3" />
+                    }
+                    Refresh
+                  </Button>
+                </div>
+                {areaContent.gaps.map((gap) => (
+                  <div
+                    key={gap.id}
+                    className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-3.5 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold">{gap.title}</h4>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-[10px] py-0 shrink-0',
+                          gap.action === 'agent'
+                            ? 'text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]'
+                            : 'text-[hsl(var(--muted-foreground))]'
+                        )}
+                      >
+                        {gap.action === 'agent' ? 'AI can fill' : 'Needs research'}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">{gap.reason}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center mb-4', colors.bg)}>
+                  <Check className={cn('h-6 w-6', colors.text)} />
+                </div>
+                <p className="text-sm font-semibold mb-1">No gaps detected</p>
+                <p className="text-sm text-[hsl(var(--muted-foreground))] max-w-xs mb-5">
+                  This area looks well-covered. Refresh to re-check.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={identifyGapsMutation.isPending}
+                  onClick={() => identifyGapsMutation.mutate(normalizedKey)}
+                >
+                  {identifyGapsMutation.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <RefreshCw className="h-4 w-4" />
+                  }
+                  Refresh
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           {/* ── History tab ── */}

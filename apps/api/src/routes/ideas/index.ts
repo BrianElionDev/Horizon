@@ -3,10 +3,10 @@ import { z } from 'zod'
 import { supabase } from '../../lib/supabase'
 import { authenticate } from '../../middleware/authenticate'
 import { forgeChat } from '../../lib/forge'
-import { AREA_PROMPTS } from '../../lib/area-prompts'
+import { AREA_PROMPTS, GAP_PROMPTS } from '../../lib/area-prompts'
 import { jsonrepair } from 'jsonrepair'
 import { CONTEXT_AREAS } from '@horizon/shared'
-import type { ContextAreaContent, ContextAreaSummary, Idea } from '@horizon/shared'
+import type { ContextAreaContent, ContextAreaGap, ContextAreaSection, ContextAreaSummary, Idea } from '@horizon/shared'
 import type { IdeaRow, ContextAreaContentRow } from '../../types/database'
 
 const VALID_AREA_KEYS: ReadonlySet<string> = new Set(CONTEXT_AREAS.map((a) => a.key))
@@ -40,6 +40,7 @@ function toContent(row: ContextAreaContentRow): ContextAreaContent {
     areaKey: row.area_key,
     rawContent: row.raw_content,
     sections: (row.sections ?? []) as ContextAreaContent['sections'],
+    gaps: (row.gaps ?? []) as ContextAreaContent['gaps'],
     completeness: row.completeness,
     structuredAt: row.structured_at,
     updatedAt: row.updated_at,
@@ -47,11 +48,85 @@ function toContent(row: ContextAreaContentRow): ContextAreaContent {
 }
 
 function emptyContent(areaKey: string): ContextAreaContent {
-  return { areaKey, rawContent: '', sections: [], completeness: 0, structuredAt: null, updatedAt: null }
+  return { areaKey, rawContent: '', sections: [], gaps: [], completeness: 0, structuredAt: null, updatedAt: null }
 }
 
 function meta() {
   return { timestamp: new Date().toISOString() }
+}
+
+function computeScore(rawContent: string, sections: ContextAreaSection[]): number {
+  if (!rawContent.trim() && sections.length === 0) return 0
+  const base = Math.min(60, Math.round((rawContent.trim().length / 2000) * 100))
+  const accepted = sections.filter((s) => s.status === 'accepted').length
+  const pending = sections.filter((s) => s.status === 'pending').length
+  const sectionScore = Math.round((accepted * 10 + pending * 4) / 5 * 100)
+  return Math.min(100, base + Math.round(sectionScore * 0.4))
+}
+
+async function identifyGaps(ideaId: string, areaKey: string, productName: string): Promise<void> {
+  const { data: row } = await supabase
+    .from('context_area_content')
+    .select('raw_content, sections')
+    .eq('idea_id', ideaId)
+    .eq('area_key', areaKey)
+    .single()
+
+  if (!row) return
+
+  const rawContent = row.raw_content ?? ''
+  const sections = (row.sections ?? []) as ContextAreaSection[]
+  if (sections.length === 0) return
+
+  const gapPrompt = GAP_PROMPTS[areaKey]
+  if (!gapPrompt) return
+
+  const gapSections = sections.map((s) => ({
+    title: s.title,
+    content: s.content,
+    status: s.status,
+  }))
+
+  const response = await forgeChat(
+    [
+      { role: 'system', content: gapPrompt.system },
+      {
+        role: 'user',
+        content: gapPrompt.userTemplate(productName, gapSections, rawContent),
+      },
+    ],
+    3000
+  )
+
+  const cleaned = response
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1')
+    .trim()
+
+  let parsed: { title: string; reason: string; action: 'manual' | 'agent' }[] = []
+  try {
+    const repaired = jsonrepair(cleaned)
+    const result = JSON.parse(repaired)
+    parsed = Array.isArray(result) ? result : []
+  } catch {
+    // silent fail — gaps are a nice-to-have
+  }
+
+  const gaps: ContextAreaGap[] = parsed
+    .filter((g) => g.title && g.reason && g.action)
+    .slice(0, 5)
+    .map((g) => ({
+      id: crypto.randomUUID(),
+      title: g.title,
+      reason: g.reason,
+      action: g.action,
+    }))
+
+  await supabase
+    .from('context_area_content')
+    .update({ gaps, updated_at: new Date().toISOString() })
+    .eq('idea_id', ideaId)
+    .eq('area_key', areaKey)
 }
 
 const createIdeaSchema = z.object({
@@ -224,8 +299,18 @@ const ideasRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const rawContent = result.data.rawContent
-    const completeness = Math.min(100, Math.round((rawContent.trim().length / 2000) * 100))
     const now = new Date().toISOString()
+
+    // Fetch existing sections to use in score calculation
+    const { data: existing } = await supabase
+      .from('context_area_content')
+      .select('sections')
+      .eq('idea_id', id)
+      .eq('area_key', areaKey)
+      .single()
+
+    const sections = (existing?.sections ?? []) as ContextAreaSection[]
+    const completeness = computeScore(rawContent, sections)
 
     const { error: upsertError } = await supabase
       .from('context_area_content')
@@ -333,13 +418,18 @@ const ideasRoutes: FastifyPluginAsync = async (fastify) => {
         updatedAt: now,
       }))
 
+    const completeness = computeScore(rawContent, sections)
+
     const { error: updateError } = await supabase
       .from('context_area_content')
-      .update({ sections, structured_at: now, updated_at: now })
+      .update({ sections, structured_at: now, updated_at: now, completeness })
       .eq('idea_id', id)
       .eq('area_key', areaKey)
 
     if (updateError) throw updateError
+
+    // Auto-trigger gap identification (await so gaps appear before response)
+    await identifyGaps(id, areaKey, idea.name).catch(() => {})
 
     return reply.send({ data: { sections, structuredAt: now }, meta: meta() })
   })
@@ -376,7 +466,7 @@ const ideasRoutes: FastifyPluginAsync = async (fastify) => {
 
     const { data: areaRow, error: fetchError } = await supabase
       .from('context_area_content')
-      .select('sections')
+      .select('sections, raw_content')
       .eq('idea_id', id)
       .eq('area_key', areaKey)
       .single()
@@ -404,9 +494,12 @@ const ideasRoutes: FastifyPluginAsync = async (fastify) => {
       updatedAt: now,
     }
 
+    const rawContent = areaRow.raw_content ?? ''
+    const completeness = computeScore(rawContent, sections)
+
     const { error: updateError } = await supabase
       .from('context_area_content')
-      .update({ sections, updated_at: now })
+      .update({ sections, completeness, updated_at: now })
       .eq('idea_id', id)
       .eq('area_key', areaKey)
 
@@ -536,9 +629,10 @@ const ideasRoutes: FastifyPluginAsync = async (fastify) => {
             updatedAt: now,
           }))
 
+        const completeness = computeScore(rawContent, sections)
         await supabase
           .from('context_area_content')
-          .update({ sections, structured_at: now, updated_at: now })
+          .update({ sections, structured_at: now, updated_at: now, completeness })
           .eq('idea_id', id)
           .eq('area_key', areaKey)
 
@@ -552,7 +646,78 @@ const ideasRoutes: FastifyPluginAsync = async (fastify) => {
       sectionCount: r.status === 'fulfilled' ? r.value.sectionCount : 0,
     }))
 
+    // Auto-trigger gap identification for all successful areas (fire-and-forget)
+    for (const r of settled) {
+      if (r.status === 'fulfilled') {
+        void identifyGaps(id, r.value.areaKey, idea.name).catch(() => {})
+      }
+    }
+
     return reply.send({ data: { results }, meta: meta() })
+  })
+
+  // POST /ideas/:id/context/:areaKey/identify-gaps  — AI gap identification
+  fastify.post('/ideas/:id/context/:areaKey/identify-gaps', { preHandler: authenticate }, async (request, reply) => {
+    const { id, areaKey } = request.params as { id: string; areaKey: string }
+
+    if (!VALID_AREA_KEYS.has(areaKey)) {
+      return reply.status(400).send({
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid context area key', statusCode: 400 },
+      })
+    }
+
+    const { data: idea, error: ideaError } = await supabase
+      .from('ideas')
+      .select('name')
+      .eq('id', id)
+      .eq('user_id', request.user!.id)
+      .single()
+
+    if (ideaError || !idea) {
+      return reply.status(404).send({
+        error: { code: 'NOT_FOUND', message: 'Idea not found', statusCode: 404 },
+      })
+    }
+
+    await identifyGaps(id, areaKey, idea.name)
+
+    const { data: row } = await supabase
+      .from('context_area_content')
+      .select('gaps')
+      .eq('idea_id', id)
+      .eq('area_key', areaKey)
+      .single()
+
+    const gaps = (row?.gaps ?? []) as ContextAreaGap[]
+    return reply.send({ data: { gaps }, meta: meta() })
+  })
+
+  // GET /ideas/:id/context/full  — full content for all 7 areas (export)
+  fastify.get('/ideas/:id/context/full', { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const { error: ideaError } = await supabase
+      .from('ideas')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', request.user!.id)
+      .single()
+
+    if (ideaError) {
+      return reply.status(404).send({
+        error: { code: 'NOT_FOUND', message: 'Idea not found', statusCode: 404 },
+      })
+    }
+
+    const { data, error } = await supabase
+      .from('context_area_content')
+      .select('*')
+      .eq('idea_id', id)
+
+    if (error) throw error
+
+    const contents = (data ?? []).map(toContent)
+    return reply.send({ data: contents, meta: meta() })
   })
 
   // POST /ideas/:id/analyse

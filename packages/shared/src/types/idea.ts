@@ -29,10 +29,18 @@ export interface ContextAreaSection {
   updatedAt: string
 }
 
+export interface ContextAreaGap {
+  id: string
+  title: string
+  reason: string
+  action: 'manual' | 'agent'
+}
+
 export interface ContextAreaContent {
   areaKey: string
   rawContent: string
   sections: ContextAreaSection[]
+  gaps: ContextAreaGap[]
   completeness: number
   structuredAt: string | null
   updatedAt: string | null

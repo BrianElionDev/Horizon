@@ -115,14 +115,12 @@ export default function ProductOverviewPage() {
               )}
             </div>
             <div className="flex gap-2 shrink-0">
-              {idea.status === 'VALIDATED' && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/products/${idea.id}/export`}>
-                    <Download className="h-4 w-4" />
-                    Export
-                  </Link>
-                </Button>
-              )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/products/${idea.id}/export`}>
+                  <Download className="h-4 w-4" />
+                  Export
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/ideas/${idea.id}/setup`}>
                   <BookOpen className="h-4 w-4" />

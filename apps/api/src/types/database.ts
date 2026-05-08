@@ -91,6 +91,7 @@ export type Database = {
           area_key: string
           raw_content?: string
           sections?: unknown[]
+          gaps?: unknown[]
           structured_at?: string | null
           completeness?: number
           updated_at?: string
@@ -98,6 +99,7 @@ export type Database = {
         Update: {
           raw_content?: string
           sections?: unknown[]
+          gaps?: unknown[]
           structured_at?: string | null
           completeness?: number
           updated_at?: string
@@ -163,6 +165,7 @@ export interface ContextAreaContentRow {
   area_key: string
   raw_content: string
   sections: unknown[]
+  gaps: unknown[]
   structured_at: string | null
   completeness: number
   updated_at: string

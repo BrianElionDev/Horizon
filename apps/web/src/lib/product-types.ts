@@ -1,14 +1,7 @@
 import { CONTEXT_AREAS } from '@horizon/shared'
-import type { ContextAreaSummary, ContextAreaSection } from '@horizon/shared'
+import type { ContextAreaSummary, ContextAreaSection, ContextAreaGap } from '@horizon/shared'
 
-export type { ContextAreaSummary, ContextAreaSection }
-
-export interface ContextAreaGap {
-  id: string
-  title: string
-  reason: string
-  action: 'manual' | 'agent'
-}
+export type { ContextAreaSummary, ContextAreaSection, ContextAreaGap }
 
 export interface ContextArea {
   key: string

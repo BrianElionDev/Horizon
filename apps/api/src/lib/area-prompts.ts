@@ -150,3 +150,133 @@ ${raw}
 ${JSON_FORMAT}`,
   },
 }
+
+/* ── Gap identification prompts ───────────────────────────────────── */
+
+type GapSection = { title: string; content: string; status: string }
+
+interface GapPrompt {
+  system: string
+  userTemplate: (productName: string, sections: GapSection[], rawContent: string) => string
+}
+
+const GAP_FORMAT = `Return a JSON array of gaps (max 5). Each gap: {"title": "what's missing", "reason": "why it matters", "action": "manual" | "agent"}. "agent" = AI can draft from existing hints. "manual" = requires real-world research/interviews. Only include gaps that are genuinely missing or severely thin (<80 chars).`
+
+function sectionsSummary(sections: GapSection[]): string {
+  if (sections.length === 0) return '(none)'
+  return sections.map(s => `- [${s.status}] "${s.title}" (${s.content.length} chars): ${s.content.slice(0, 200)}`).join('\n')
+}
+
+export const GAP_PROMPTS: Record<string, GapPrompt> = {
+  problem_definition: {
+    system: `You identify specific gaps in a product problem definition. You compare existing content against what a thorough problem definition requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the Problem Definition for "${name}" and identify what is missing or weak.
+
+Expected coverage: Core Problem Statement, Who It Affects, Evidence & Signals, Current Workarounds, Why Now.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+
+  user_stakeholder_research: {
+    system: `You identify specific gaps in user and stakeholder research. You compare existing content against what thorough user research requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the User & Stakeholder Research for "${name}" and identify what is missing or weak.
+
+Expected coverage: User Segments, Key Pain Points, Behavioural Patterns, Stakeholder Map, Standout Insights.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+
+  market_competitive_analysis: {
+    system: `You identify specific gaps in market and competitive analysis. You compare existing content against what a thorough competitive landscape requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the Market & Competitive Analysis for "${name}" and identify what is missing or weak.
+
+Expected coverage: Competitive Landscape, Market Opportunity, Whitespace & Gaps, Positioning Opportunity, Market Trends.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+
+  regulatory_domain_context: {
+    system: `You identify specific gaps in regulatory and domain context analysis. You compare existing content against what a thorough constraint analysis requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the Regulatory & Domain Context for "${name}" and identify what is missing or weak.
+
+Expected coverage: Hard Constraints, Compliance Requirements, Risk Areas, Technical & Platform Limits, Domain-Specific Rules.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+
+  business_model_strategy: {
+    system: `You identify specific gaps in business model and strategy analysis. You compare existing content against what a viable business model definition requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the Business Model & Strategy for "${name}" and identify what is missing or weak.
+
+Expected coverage: Revenue Model, Distribution Strategy, Unit Economics, Key Metrics, Strategic Risks.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+
+  product_vision_roadmap: {
+    system: `You identify specific gaps in product vision and roadmap definition. You compare existing content against what a clear product direction requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the Product Vision & Roadmap for "${name}" and identify what is missing or weak.
+
+Expected coverage: Vision Statement, Phases & Milestones, MVP Scope, Explicit Non-Goals, Dependencies & Risks.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+
+  brand_design_direction: {
+    system: `You identify specific gaps in brand and design direction. You compare existing content against what a clear brand identity requires.`,
+    userTemplate: (name, sections, raw) => `/nothink
+Analyze the Brand & Design Direction for "${name}" and identify what is missing or weak.
+
+Expected coverage: Positioning & Tone, Naming & Nomenclature, Visual Direction, Design Principles, Anti-Patterns.
+
+Existing sections:
+${sectionsSummary(sections)}
+
+Raw content (first 1500 chars):
+${raw.slice(0, 1500)}
+
+${GAP_FORMAT}`,
+  },
+}
